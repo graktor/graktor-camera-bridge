@@ -1,0 +1,62 @@
+name: Build and publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish all platforms
+        run: |
+          for rid in win-x64 osx-x64 osx-arm64 linux-x64; do
+            dotnet publish -c Release -r $rid --self-contained true -p:PublishSingleFile=true -o ./publish/$rid
+          done
+
+      - name: Upload to R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          pip install --quiet boto3
+          python3 - <<'PY'
+          import boto3, os
+
+          account_id = os.environ["R2_ACCOUNT_ID"]
+          bucket = os.environ["R2_BUCKET_NAME"]
+          s3 = boto3.client(
+              "s3",
+              endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+              aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+              aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+              region_name="auto",
+          )
+
+          targets = {
+              "win-x64": ("ZendoriaCameraBridge.exe", "releases/ZendoriaCameraBridge-win-x64.exe", "application/x-msdownload"),
+              "osx-x64": ("ZendoriaCameraBridge", "releases/ZendoriaCameraBridge-macos-x64", "application/octet-stream"),
+              "osx-arm64": ("ZendoriaCameraBridge", "releases/ZendoriaCameraBridge-macos-arm64", "application/octet-stream"),
+              "linux-x64": ("ZendoriaCameraBridge", "releases/ZendoriaCameraBridge-linux-x64", "application/octet-stream"),
+          }
+
+          for rid, (filename, key, ctype) in targets.items():
+              path = f"publish/{rid}/{filename}"
+              s3.upload_file(path, bucket, key, ExtraArgs={"ContentType": ctype})
+              print(f"uploaded {key}")
+          PY
+
+      - name: Also keep as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: graktor-camera-bridge-builds
+          path: publish/
