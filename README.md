@@ -16,6 +16,12 @@ app can show — no port forwarding on the shop's router, no manual URLs to past
 MediaMTX (the actual video relay engine) is downloaded automatically on first run — nothing
 to install by hand for that part.
 
+## Downloads
+
+The [latest release](https://github.com/graktor/graktor-camera-bridge/releases/tag/latest) has a
+self-contained executable for each platform (win-x64, macos-x64, macos-arm64, linux-x64), rebuilt
+automatically from every push to `main`.
+
 ## Setup
 
 1. In the Zendoria admin app, go to **Cameras → Zendoria Camera Bridge**, pick the branch,
