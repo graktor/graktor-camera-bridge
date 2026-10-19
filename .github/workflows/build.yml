@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -60,3 +63,27 @@ jobs:
         with:
           name: graktor-camera-bridge-builds
           path: publish/
+
+      - name: Rename binaries for the GitHub Release
+        run: |
+          mkdir -p dist
+          cp publish/win-x64/ZendoriaCameraBridge.exe dist/ZendoriaCameraBridge-win-x64.exe
+          cp publish/osx-x64/ZendoriaCameraBridge dist/ZendoriaCameraBridge-macos-x64
+          cp publish/osx-arm64/ZendoriaCameraBridge dist/ZendoriaCameraBridge-macos-arm64
+          cp publish/linux-x64/ZendoriaCameraBridge dist/ZendoriaCameraBridge-linux-x64
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          make_latest: true
+          files: dist/*
+          body: |
+            Automated build from the latest push to `main` — download the file for your platform below.
+
+            **Requires [Tailscale](https://tailscale.com/download) installed separately first** (this program drives Tailscale's own CLI, it doesn't bundle or replace it — any current Tailscale version works, nothing is version-pinned):
+            - Windows: expects `tailscale.exe` under `C:\Program Files\Tailscale\` (or `Program Files (x86)`)
+            - macOS / Linux: expects `tailscale` on `/usr/bin` or `/usr/local/bin`
+
+            See the [README](https://github.com/graktor/graktor-camera-bridge#readme) for setup.
